@@ -45,3 +45,5 @@ app.use((error: unknown, _req: express.Request, res: express.Response, _next: ex
   console.error(error);
   res.status(500).json({ message: "Internal server error" });
 });
+
+export default app;
