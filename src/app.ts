@@ -11,7 +11,7 @@ import { connectDatabase } from "./config/database.js";
 export const app = express();
 
 const corsOptions = {
-  origin: process.env.FRONTEND_URL ?? "*",
+  origin: "*",
   methods: ["GET", "POST", "PATCH", "OPTIONS"],
   allowedHeaders: ["Content-Type", "x-user-role"]
 };
