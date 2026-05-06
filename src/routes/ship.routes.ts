@@ -1,4 +1,4 @@
-import { Router } from "express";
+﻿import { Router } from "express";
 import { z } from "zod";
 import { requireRole } from "../middleware/require-role.js";
 import { ShipModel } from "../models/ship.model.js";
@@ -13,8 +13,29 @@ const createSchema = z.object({
 
 shipRoutes.get(
   "/",
-  asyncHandler(async (_req, res) => {
-    res.json(await ShipModel.find().sort({ name: 1 }));
+  asyncHandler(async (req, res) => {
+    const page = Number(req.query.page ?? 0);
+    const limit = Number(req.query.limit ?? 0);
+    const hasPagination = Number.isFinite(page) && Number.isFinite(limit) && page > 0 && limit > 0;
+
+    if (!hasPagination) {
+      res.json(await ShipModel.find().sort({ name: 1 }));
+      return;
+    }
+
+    const skip = (page - 1) * limit;
+    const [items, total] = await Promise.all([
+      ShipModel.find().sort({ name: 1 }).skip(skip).limit(limit),
+      ShipModel.countDocuments({})
+    ]);
+
+    res.json({
+      items,
+      total,
+      page,
+      limit,
+      totalPages: Math.max(1, Math.ceil(total / limit))
+    });
   })
 );
 

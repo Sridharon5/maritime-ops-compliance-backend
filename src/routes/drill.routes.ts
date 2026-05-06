@@ -1,4 +1,4 @@
-import { Router } from "express";
+﻿import { Router } from "express";
 import { z } from "zod";
 import { requireRole } from "../middleware/require-role.js";
 import { SafetyDrillModel } from "../models/safety-drill.model.js";
@@ -16,11 +16,38 @@ const createSchema = z.object({
 drillRoutes.get(
   "/",
   asyncHandler(async (req, res) => {
-    const filter: Record<string, string | { $in: string[] }> = {};
+    const page = Number(req.query.page ?? 0);
+    const limit = Number(req.query.limit ?? 0);
+    const hasPagination = Number.isFinite(page) && Number.isFinite(limit) && page > 0 && limit > 0;
+
+    const filter: Record<string, unknown> = {};
     if (req.query.shipId) filter.shipId = req.query.shipId.toString();
     if (req.query.crewId) filter.assignedCrewIds = { $in: [req.query.crewId.toString()] };
+    if (req.query.status) filter.status = req.query.status.toString();
 
-    res.json(await SafetyDrillModel.find(filter).sort({ scheduledDate: 1 }));
+    const scheduledDate: Record<string, string> = {};
+    if (req.query.scheduledFrom) scheduledDate.$gte = req.query.scheduledFrom.toString();
+    if (req.query.scheduledTo) scheduledDate.$lte = req.query.scheduledTo.toString();
+    if (Object.keys(scheduledDate).length > 0) filter.scheduledDate = scheduledDate;
+
+    if (!hasPagination) {
+      res.json(await SafetyDrillModel.find(filter).sort({ scheduledDate: 1 }));
+      return;
+    }
+
+    const skip = (page - 1) * limit;
+    const [items, total] = await Promise.all([
+      SafetyDrillModel.find(filter).sort({ scheduledDate: 1 }).skip(skip).limit(limit),
+      SafetyDrillModel.countDocuments(filter)
+    ]);
+
+    res.json({
+      items,
+      total,
+      page,
+      limit,
+      totalPages: Math.max(1, Math.ceil(total / limit))
+    });
   })
 );
 
